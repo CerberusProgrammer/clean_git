@@ -1,3 +1,5 @@
+import 'package:clean_git/models/branch.dart';
+import 'package:clean_git/models/commit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:file_picker/file_picker.dart';
@@ -5,51 +7,48 @@ import 'dart:io';
 import 'package:git/git.dart';
 
 void main() {
-  runApp(MainApp());
+  runApp(const MainApp());
 }
 
 class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      locale: Locale('en', 'US'), // Define el locale
-      localizationsDelegates: [
+      locale: const Locale('en', 'US'), // Define el locale
+      localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
       theme: ThemeData(brightness: Brightness.dark),
-      home: MyApp(),
+      home: const MyApp(),
     );
   }
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
   String authorName = '';
-  List<String> commits = [];
-  List<String> branches = [];
+  List<CustomCommit> commits = [];
+  List<Branch> branches = [];
 
-  void showMessageDialog(BuildContext context, String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cerrar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+  Widget showMessageDialog(String title, String message) {
+    return AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        TextButton(
+          child: const Text('Cerrar'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 
@@ -61,7 +60,7 @@ class _MyAppState extends State<MyApp> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              child: Text('Abrir explorador de archivos'),
+              child: const Text('Abrir explorador de archivos'),
               onPressed: () async {
                 try {
                   String? directoryPath =
@@ -73,68 +72,96 @@ class _MyAppState extends State<MyApp> {
                         await Directory('${directory.path}/.git').exists();
                     if (gitFolderExists) {
                       GitDir gitDir = await GitDir.fromExisting(directory.path);
-                      if (gitDir != null) {
-                        showMessageDialog(context, 'Información',
-                            'El repositorio Git en $directoryPath es válido.');
-                        // Aquí puedes ejecutar comandos de Git, como obtener el nombre del autor
-                        ProcessResult result =
-                            await gitDir.runCommand(['config', 'user.name']);
-                        setState(() {
-                          authorName = result.stdout.trim();
-                        });
 
-                        ProcessResult resultCommits = await gitDir.runCommand([
-                          'log',
-                          '--all',
-                          '--decorate',
-                          '--oneline',
-                          '--pretty=format:%H %s (%an, %d)'
-                        ]);
-                        setState(() {
-                          commits = resultCommits.stdout.trim().split('\n');
+                      ProcessResult result =
+                          await gitDir.runCommand(['config', 'user.name']);
+                      setState(() {
+                        authorName = result.stdout.trim();
+                      });
+
+                      ProcessResult resultCommits = await gitDir.runCommand([
+                        'log',
+                        '--all',
+                        '--decorate',
+                        '--oneline',
+                        '--pretty=format:%H %s (%an, %d)'
+                      ]);
+                      setState(() {
+                        List<String> rawCommits =
+                            resultCommits.stdout.trim().split('\n');
+                        commits = rawCommits
+                            .map(
+                              (commit) => CustomCommit(
+                                sha: commit.split(' ')[0],
+                                message: commit.split(' ')[1],
+                                author: commit.split(' ')[2],
+                                branch: commit.split(' ')[3],
+                              ),
+                            )
+                            .toList();
+                      });
+
+                      ProcessResult resultBranches =
+                          await gitDir.runCommand(['branch', '-a']);
+
+                      setState(() {
+                        List<String> rawBranches =
+                            resultBranches.stdout.trim().split('\n');
+
+                        var br = rawBranches.map((branch) async {
+                          branch = branch.trim().replaceFirst('*', '').trim();
+
+                          ProcessResult resultLastCommit =
+                              await gitDir.runCommand(['log', '-1', branch]);
+                          String lastCommit =
+                              resultLastCommit.stdout.trim().split('\n').first;
+                          ProcessResult resultTotalCommits = await gitDir
+                              .runCommand(['rev-list', '--count', branch]);
+                          String totalCommits =
+                              resultTotalCommits.stdout.trim();
+
+                          return Branch(
+                            name: branch,
+                            lastCommit: lastCommit,
+                            totalCommits: int.parse(totalCommits),
+                          );
+                        }).toList();
+
+                        Future.wait(br).then((completedBr) {
+                          setState(() {
+                            branches = completedBr;
+                          });
                         });
-                        // Obtener las ramas
-                        ProcessResult resultBranches =
-                            await gitDir.runCommand(['branch', '-a']);
-                        setState(() {
-                          branches = resultBranches.stdout.trim().split('\n');
-                        });
-                      } else {
-                        showMessageDialog(context, 'Error',
-                            'El repositorio Git en $directoryPath no es válido.');
-                      }
-                    } else {
-                      showMessageDialog(context, 'Error',
-                          'La carpeta .git no fue encontrada en $directoryPath');
+                      });
                     }
-                  } else {
-                    // El usuario canceló la selección
                   }
                 } catch (e) {
-                  showMessageDialog(context, 'Error',
-                      'No se encontró zenity. Por favor, instálalo usando tu gestor de paquetes.');
+                  showDialog(
+                      context: context,
+                      builder: (builder) =>
+                          showMessageDialog('Error', e.toString()));
                 }
               },
             ),
             Text('Nombre del autor: $authorName'),
-            Text('Commits:'),
+            const Text('Commits:'),
             Expanded(
               child: ListView.builder(
                 itemCount: commits.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    title: Text(commits[index]),
+                    title: Text(commits[index].toString()),
                   );
                 },
               ),
             ),
-            Text('Ramas:'),
+            const Text('Ramas:'),
             Expanded(
               child: ListView.builder(
                 itemCount: branches.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    title: Text(branches[index]),
+                    title: Text(branches[index].toString()),
                   );
                 },
               ),

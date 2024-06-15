@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:git/git.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 
 final gitRepoProvider =
     StateNotifierProvider<GitRepoNotifier, AsyncValue<GitRepo>>(
@@ -40,42 +41,8 @@ class GitRepoNotifier extends StateNotifier<AsyncValue<GitRepo>> {
               await gitDir.runCommand(['config', 'user.name']);
           String author = result.stdout.trim();
 
-          ProcessResult resultCommits = await gitDir.runCommand([
-            'log',
-            '--all',
-            '--decorate',
-            '--oneline',
-            '--pretty=format:%H %s (%an, %d)'
-          ]);
-          List<String> rawCommits = resultCommits.stdout.trim().split('\n');
-
-          List<CustomCommit> commits = rawCommits.map((commit) {
-            List<String> parts = commit.split(' ');
-            String sha = parts.removeAt(0);
-            String message = parts.join(' ');
-            return CustomCommit(
-                sha: sha, message: message, author: parts[2], branch: parts[3]);
-          }).toList();
-
-          ProcessResult resultBranches =
-              await gitDir.runCommand(['branch', '-a']);
-          List<String> rawBranches = resultBranches.stdout.trim().split('\n');
-          List<Branch> branches = [];
-          for (String branch in rawBranches) {
-            branch = branch.trim().replaceFirst('*', '').trim();
-            ProcessResult resultLastCommit =
-                await gitDir.runCommand(['log', '-1', branch]);
-            String lastCommit =
-                resultLastCommit.stdout.trim().split('\n').first;
-            ProcessResult resultTotalCommits =
-                await gitDir.runCommand(['rev-list', '--count', branch]);
-            int totalCommits = int.parse(resultTotalCommits.stdout.trim());
-
-            branches.add(Branch(
-                name: branch,
-                lastCommit: lastCommit,
-                totalCommits: totalCommits));
-          }
+          List<CustomCommit> commits = await getCommits(gitDir);
+          List<Branch> branches = await getBranches(gitDir, commits);
 
           state = AsyncValue.data(
               GitRepo(author: author, commits: commits, branches: branches));
@@ -84,5 +51,47 @@ class GitRepoNotifier extends StateNotifier<AsyncValue<GitRepo>> {
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
+  }
+
+  Future<List<CustomCommit>> getCommits(GitDir gitDir) async {
+    ProcessResult resultCommits = await gitDir.runCommand([
+      'log',
+      '--all',
+      '--decorate',
+      '--oneline',
+      '--pretty=format:%H %s (%an, %ad)'
+    ]);
+    List<String> rawCommits = resultCommits.stdout.trim().split('\n');
+
+    return rawCommits.map((commit) {
+      List<String> parts = commit.split(' ');
+      String sha = parts.removeAt(0);
+      String message = parts.join(' ');
+      String dateString = parts.sublist(parts.length - 6).join(' ');
+      DateFormat format = DateFormat('E MMM d HH:mm:ss yyyy Z');
+      DateTime date = format.parse(dateString);
+      return CustomCommit(
+          sha: sha,
+          message: message,
+          author: parts[2],
+          date: date,
+          branches: []);
+    }).toList();
+  }
+
+  Future<List<Branch>> getBranches(
+      GitDir gitDir, List<CustomCommit> commits) async {
+    ProcessResult resultBranches = await gitDir.runCommand(['branch', '-a']);
+    List<String> rawBranches = resultBranches.stdout.trim().split('\n');
+    List<Branch> branches = [];
+    for (String branch in rawBranches) {
+      branch = branch.trim().replaceFirst('*', '').trim();
+      List<CustomCommit> branchCommits =
+          commits.where((commit) => commit.branches.contains(branch)).toList();
+
+      branches.add(Branch(name: branch, commits: branchCommits));
+    }
+
+    return branches;
   }
 }

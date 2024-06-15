@@ -1,35 +1,20 @@
 class CustomCommit {
-  String sha;
-  String message;
-  String author;
-  String branch;
+  final String sha;
+  final String message;
+  final String author;
+  final DateTime date;
+  final List<String> branches;
 
   CustomCommit({
     required this.sha,
     required this.message,
     required this.author,
-    required this.branch,
+    required this.date,
+    required this.branches,
   });
-
-  factory CustomCommit.fromJson(Map<String, dynamic> json) {
-    return CustomCommit(
-        sha: json['sha'],
-        message: json['commit']['message'],
-        author: json['commit']['author']['name'],
-        branch: json['commit']['author']['branch']);
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'sha': sha,
-      'message': message,
-      'author': author,
-      'branch': branch,
-    };
-  }
 
   @override
   String toString() {
-    return 'Commit: $sha, $message, $author, $branch';
+    return 'Commit(sha: $sha, message: $message, author: $author, date: $date, branches: $branches)';
   }
 }

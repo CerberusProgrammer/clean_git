@@ -31,7 +31,7 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       Text('Author: ${gitRepo.author}'),
                       ...gitRepo.commits
-                          .map((commit) => Text('Commit: ${commit.sha}')),
+                          .map((commit) => Text('Commit: ${commit.date}')),
                       ...gitRepo.branches
                           .map((branch) => Text('Branch: ${branch.name}')),
                     ],
@@ -39,7 +39,9 @@ class HomeScreen extends ConsumerWidget {
                 }
               },
               loading: () => const CircularProgressIndicator(),
-              error: (error, stackTrace) => Text('Error: $error'),
+              error: (error, stackTrace) {
+                return Text('Error: $error');
+              },
             ),
           ],
         ),

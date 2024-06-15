@@ -1,32 +1,16 @@
+import 'package:clean_git/models/commit.dart';
+
 class Branch {
   final String name;
-  final String lastCommit;
-  final int totalCommits;
+  final List<CustomCommit> commits;
 
   Branch({
     required this.name,
-    required this.lastCommit,
-    required this.totalCommits,
+    required this.commits,
   });
-
-  factory Branch.fromJson(Map<String, dynamic> json) {
-    return Branch(
-      name: json['name'],
-      lastCommit: json['lastCommit'],
-      totalCommits: json['totalCommits'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'lastCommit': lastCommit,
-      'totalCommits': totalCommits,
-    };
-  }
 
   @override
   String toString() {
-    return 'Branch: $name, $lastCommit, $totalCommits';
+    return 'Branch(name: $name, commits: $commits)';
   }
 }

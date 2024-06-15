@@ -82,9 +82,14 @@ class _MyAppState extends State<MyApp> {
                         setState(() {
                           authorName = result.stdout.trim();
                         });
-                        // Obtener los commits
-                        ProcessResult resultCommits = await gitDir
-                            .runCommand(['log', '--pretty=format:%H %s']);
+
+                        ProcessResult resultCommits = await gitDir.runCommand([
+                          'log',
+                          '--all',
+                          '--decorate',
+                          '--oneline',
+                          '--pretty=format:%H %s (%an, %d)'
+                        ]);
                         setState(() {
                           commits = resultCommits.stdout.trim().split('\n');
                         });

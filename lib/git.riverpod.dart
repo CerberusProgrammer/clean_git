@@ -43,6 +43,7 @@ class GitRepoNotifier extends StateNotifier<AsyncValue<GitRepo>> {
 
           List<CustomCommit> commits = await getCommits(gitDir);
           List<Branch> branches = await getBranches(gitDir, commits);
+          print(await getBranchesAndCommits(gitDir));
 
           state = AsyncValue.data(
               GitRepo(author: author, commits: commits, branches: branches));
@@ -108,69 +109,73 @@ class GitRepoNotifier extends StateNotifier<AsyncValue<GitRepo>> {
   }
 
   Future<List<Branch>> getBranchesAndCommits(GitDir gitDir) async {
-    // Run the 'git branch' command to get all branches
     ProcessResult resultBranches = await gitDir.runCommand(['branch']);
-    // Split the output by newline to get a list of branch names
     List<String> branchNames = resultBranches.stdout.trim().split('\n');
 
     Map<String, Branch> branches = {};
-
-    // Iterate over each branch
+    print("1");
     for (String branchName in branchNames) {
-      // Run the 'git log' command for the branch to get all commits
+      print("2");
       ProcessResult resultCommits = await gitDir
           .runCommand(['log', '--decorate', '--oneline', branchName.trim()]);
 
-      // Split the output by newline to get a list of commits
-      List<String> rawCommits = resultCommits.stdout.trim().split('\n');
+      List<String> rawCommits = resultCommits.stdout.trim().split('');
+      print(rawCommits);
+      print(rawCommits.isNotEmpty);
 
       for (String rawCommit in rawCommits) {
         print(rawCommit);
-        List<String> parts = rawCommit.split(' ');
-        String hash = parts[0];
-        String message = parts.sublist(2).join(' ');
-
-        if (!branches.containsKey(branchName)) {
-          branches[branchName] = Branch(
-              name: branchName,
-              commits: [],
-              originBranch: '',
-              mergedBranches: [],
-              unmergedBranches: [],
-              authors: [],
-              ahead: 0,
-              behind: 0);
-        }
-
-        ProcessResult resultFiles =
-            await gitDir.runCommand(['show', '--name-only', hash]);
-        List<String> filesModified =
-            resultFiles.stdout.trim().split('\n').skip(6).toList();
-
-        ProcessResult resultDateAuthor =
-            await gitDir.runCommand(['show', '-s', '--format=%ci,%an', hash]);
-        List<String> dateAuthor = resultDateAuthor.stdout.trim().split(',');
-        DateTime date = DateTime.parse(dateAuthor[0]);
-        String author = dateAuthor[1];
-
-        ProcessResult resultLines =
-            await gitDir.runCommand(['show', '--stat', hash]);
-        RegExp exp = RegExp(r'(\d+) insertions\(\+\), (\d+) deletions\(-\)');
-        RegExpMatch? match = exp.firstMatch(resultLines.stdout);
-        int linesInserted = int.parse(match?.group(1) ?? '0');
-        int linesDeleted = int.parse(match?.group(2) ?? '0');
-
-        branches[branchName]?.commits.add(CustomCommit(
-              sha: hash,
-              message: message,
-              author: author,
-              date: date,
-              filesModified: filesModified,
-              branch: branchName,
-              linesInserted: linesInserted,
-              linesDeleted: linesDeleted,
-            ));
       }
+
+      if (rawCommits.isNotEmpty) {
+        for (String rawCommit in rawCommits) {
+          List<String> parts = rawCommit.split(' ');
+          String hash = parts[0];
+          String message = parts.sublist(2).join(' ');
+
+          if (!branches.containsKey(branchName)) {
+            branches[branchName] = Branch(
+                name: branchName,
+                commits: [],
+                originBranch: '',
+                mergedBranches: [],
+                unmergedBranches: [],
+                authors: [],
+                ahead: 0,
+                behind: 0);
+          }
+
+          ProcessResult resultFiles =
+              await gitDir.runCommand(['show', '--name-only', hash]);
+          List<String> filesModified =
+              resultFiles.stdout.trim().split('\n').skip(6).toList();
+
+          ProcessResult resultDateAuthor =
+              await gitDir.runCommand(['show', '-s', '--format=%ci,%an', hash]);
+          List<String> dateAuthor = resultDateAuthor.stdout.trim().split(',');
+          DateTime date = DateTime.parse(dateAuthor[0]);
+          String author = dateAuthor[1];
+
+          ProcessResult resultLines =
+              await gitDir.runCommand(['show', '--stat', hash]);
+          RegExp exp = RegExp(r'(\d+) insertions\(\+\), (\d+) deletions\(-\)');
+          RegExpMatch? match = exp.firstMatch(resultLines.stdout);
+          int linesInserted = int.parse(match?.group(1) ?? '0');
+          int linesDeleted = int.parse(match?.group(2) ?? '0');
+
+          branches[branchName]?.commits.add(CustomCommit(
+                sha: hash,
+                message: message,
+                author: author,
+                date: date,
+                filesModified: filesModified,
+                branch: branchName,
+                linesInserted: linesInserted,
+                linesDeleted: linesDeleted,
+              ));
+        }
+      }
+      print('3');
     }
 
     return branches.values.toList();

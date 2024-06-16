@@ -5,6 +5,7 @@ class CustomCommit {
   final DateTime date;
   final List<String> filesModified;
   final int linesInserted;
+  final int filesChanged;
   final int linesDeleted;
   final String branch;
 
@@ -16,11 +17,12 @@ class CustomCommit {
     required this.filesModified,
     required this.branch,
     required this.linesInserted,
+    required this.filesChanged,
     required this.linesDeleted,
   });
 
   @override
   String toString() {
-    return 'Commit(sha: $sha, message: $message, author: $author, date: $date, filesModified: $filesModified, linesInserted: $linesInserted, linesDeleted: $linesDeleted)';
+    return 'Commit(sha: $sha, message: $message, author: $author, date: $date, filesModified: $filesModified, linesInserted: $linesInserted, filesChanged: $filesChanged, linesDeleted: $linesDeleted, branch: $branch)';
   }
 }

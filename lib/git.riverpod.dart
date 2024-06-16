@@ -71,11 +71,15 @@ class GitRepoNotifier extends StateNotifier<AsyncValue<GitRepo>> {
       DateFormat format = DateFormat('E MMM d HH:mm:ss yyyy Z');
       DateTime date = format.parse(dateString);
       return CustomCommit(
-          sha: sha,
-          message: message,
-          author: parts[2],
-          date: date,
-          branches: []);
+        sha: sha,
+        message: message,
+        author: parts[2],
+        date: date,
+        branch: '',
+        filesModified: [],
+        linesInserted: 0,
+        linesDeleted: 0,
+      );
     }).toList();
   }
 
@@ -87,9 +91,17 @@ class GitRepoNotifier extends StateNotifier<AsyncValue<GitRepo>> {
     for (String branch in rawBranches) {
       branch = branch.trim().replaceFirst('*', '').trim();
       List<CustomCommit> branchCommits =
-          commits.where((commit) => commit.branches.contains(branch)).toList();
+          commits.where((commit) => commit.branch.contains(branch)).toList();
 
-      branches.add(Branch(name: branch, commits: branchCommits));
+      branches.add(Branch(
+          name: branch,
+          commits: branchCommits,
+          originBranch: '',
+          mergedBranches: [],
+          unmergedBranches: [],
+          authors: [],
+          ahead: 0,
+          behind: 0));
     }
 
     return branches;

@@ -1,6 +1,7 @@
 import 'package:clean_git/git.riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -27,20 +28,55 @@ class HomeScreen extends ConsumerWidget {
                     gitRepo.branches.isEmpty) {
                   return const Text('No data');
                 } else {
-                  return Column(
-                    children: [
-                      Text('Author: ${gitRepo.author}'),
-                      ...gitRepo.commits
-                          .map((commit) => Text('Commit: ${commit.date}')),
-                      ...gitRepo.branches
-                          .map((branch) => Text('Branch: ${branch.name}')),
-                    ],
+                  return Expanded(
+                    child: ListView.builder(
+                      itemCount: gitRepo.commits.length,
+                      itemBuilder: (context, index) {
+                        final commit = gitRepo.commits[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 50,
+                                child: Center(
+                                  child: Container(
+                                    height: 20,
+                                    width: 20,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Commit: ${commit.sha}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text('Author: ${commit.author}'),
+                                    Text('Message: ${commit.message}'),
+                                    Text(
+                                        'Date: ${DateFormat('yyyy-MM-dd HH:mm').format(commit.date)}'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   );
                 }
               },
               loading: () => const CircularProgressIndicator(),
               error: (error, stackTrace) {
-                return Text('Error: $error');
+                throw error;
               },
             ),
           ],

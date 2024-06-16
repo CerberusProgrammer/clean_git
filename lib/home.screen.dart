@@ -17,15 +17,12 @@ class HomeScreen extends ConsumerWidget {
           children: [
             ElevatedButton(
               child: const Text('Abrir explorador de archivos'),
-              onPressed: () async {
-                ref.read(gitRepoProvider.notifier).openDirectory();
-              },
+              onPressed: () async =>
+                  ref.read(gitRepoProvider.notifier).openDirectory(),
             ),
             gitRepoAsyncValue.when(
               data: (gitRepo) {
-                if (gitRepo.author.isEmpty &&
-                    gitRepo.commits.isEmpty &&
-                    gitRepo.branches.isEmpty) {
+                if (gitRepo.commits.isEmpty) {
                   return const Text('No data');
                 } else {
                   return Expanded(
@@ -33,6 +30,7 @@ class HomeScreen extends ConsumerWidget {
                       itemCount: gitRepo.commits.length,
                       itemBuilder: (context, index) {
                         final commit = gitRepo.commits[index];
+
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: Row(
@@ -63,6 +61,14 @@ class HomeScreen extends ConsumerWidget {
                                     Text('Message: ${commit.message}'),
                                     Text(
                                         'Date: ${DateFormat('yyyy-MM-dd HH:mm').format(commit.date)}'),
+                                    Text('Branch: ${commit.branch}'),
+                                    Text('Files: ${commit.filesModified}'),
+                                    Text(
+                                        'Lines Inserted: ${commit.linesInserted}'),
+                                    Text(
+                                        'Lines Deleted: ${commit.linesDeleted}'),
+                                    Text(
+                                        'Files Changed: ${commit.filesChanged}'),
                                   ],
                                 ),
                               ),
